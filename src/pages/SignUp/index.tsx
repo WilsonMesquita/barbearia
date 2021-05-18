@@ -64,9 +64,8 @@ const SignUp: React.FC = () => {
 
                 addToast({
                     type: 'error',
-                    title: 'Ops, erro no  cadastro!',
-                    description:
-                        'Erro ao tentar o acesso, cheque suas credenciais.',
+                    title: 'Ops, erro ao tentar fazer o cadastro!',
+                    description: 'Não é permitido cadastro duplicado.',
                 });
             }
         },
