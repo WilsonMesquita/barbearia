@@ -67,7 +67,6 @@ const SignIn: React.FC = () => {
                     title: 'Ops, erro na autenticação',
                     description:
                         'Ocorreu um erro ao tentar o acesso, cheque suas credenciais!',
-                    // 'Este cadastro já existe!',
                 });
             }
         },
