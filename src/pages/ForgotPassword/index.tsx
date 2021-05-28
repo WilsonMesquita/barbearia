@@ -68,7 +68,8 @@ const ForgotPassword: React.FC = () => {
                 addToast({
                     type: 'error',
                     title: 'Ops, erro na recuperação da senha',
-                    description: 'E-mail não cadastrado ou errado!',
+                    description:
+                        'E-mail não cadastrado em nossa base de dados!',
                 });
             } finally {
                 setLoading(false);
