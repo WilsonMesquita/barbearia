@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { ChangeEvent, useCallback, useRef } from 'react';
 import { FiMail, FiUser, FiLock, FiCamera, FiArrowLeft } from 'react-icons/fi';
 import { FormHandles } from '@unform/core';
 import { Form } from '@unform/web';
@@ -17,15 +17,18 @@ import { useAuth } from '../../hooks/auth';
 interface ProfileFormData {
     name: string;
     email: string;
+    old_password: string;
     password: string;
+    password_confirmation: string;
 }
 
 const Profile: React.FC = () => {
     const formRef = useRef<FormHandles>(null);
+
     const { addToast } = useToast();
     const history = useHistory();
 
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
 
     const handleSubmit = useCallback(
         async (data: ProfileFormData) => {
@@ -38,21 +41,65 @@ const Profile: React.FC = () => {
                         .lowercase()
                         .required('Ops, o e-mail é obrigatório!')
                         .email('Ops, digite um e-mail válido!'),
-                    password: Yup.string().min(6, 'Ops, no mńimo 6 dígitos!'),
+                    old_password: Yup.string().required(
+                        'Ops, a senha obrigatória!'
+                    ),
+                    password: Yup.string().when('old_password', {
+                        is: (val: string) => !!val.length,
+                        then: Yup.string().required(
+                            'Ops, este campo é obrigatório!'
+                        ),
+                        otherwise: Yup.string(),
+                    }),
+                    password_confirmation: Yup.string()
+                        .when('old_password', {
+                            is: (val: string) => !!val.length,
+                            then: Yup.string().required(
+                                'Ops, este campo é obrigatório!'
+                            ),
+                            otherwise: Yup.string(),
+                        })
+                        .oneOf(
+                            [Yup.ref('password'), null],
+                            'Ops, a confirmação da senha está incorreta!'
+                        ),
                 });
 
                 await schema.validate(data, {
                     abortEarly: false,
                 });
 
-                await api.post('users', data);
+                const {
+                    name,
+                    email,
+                    old_password,
+                    password,
+                    password_confirmation,
+                } = data;
 
-                history.push('/');
+                const formData = {
+                    name,
+                    email,
+                    ...(old_password
+                        ? {
+                              old_password,
+                              password,
+                              password_confirmation,
+                          }
+                        : {}),
+                };
+
+                const response = await api.put('/profile', formData);
+
+                updateUser(response.data);
+
+                history.push('/dashboard');
 
                 addToast({
                     type: 'success',
-                    title: 'Cadastro realizado com sucesso',
-                    description: 'Você já pode acessar o sistema!',
+                    title: 'Perfil atualizado com SUCESSO!',
+                    description:
+                        'As informações do seu perfil foram atualizadas com sucesso!',
                 });
             } catch (err) {
                 if (err instanceof Yup.ValidationError) {
@@ -65,12 +112,33 @@ const Profile: React.FC = () => {
 
                 addToast({
                     type: 'error',
-                    title: 'Ops, erro ao tentar fazer o cadastro!',
-                    description: 'Não é permitido cadastro duplicado.',
+                    title: 'Ops, erro na atualização!',
+                    description:
+                        'Ops, ocorreu um erro ao atualizar o perfil, tente novamente!',
                 });
             }
         },
-        [addToast, history]
+        [addToast, history, updateUser]
+    );
+
+    const handleAvatarChange = useCallback(
+        (e: ChangeEvent<HTMLInputElement>) => {
+            if (e.target.files) {
+                const data = new FormData();
+
+                data.append('avatar', e.target.files[0]);
+
+                api.patch('/users/avatar', data).then((response) => {
+                    updateUser(response.data);
+
+                    addToast({
+                        type: 'success',
+                        title: 'Avatar atualizado com SUCESSO!',
+                    });
+                });
+            }
+        },
+        [addToast, updateUser]
     );
 
     return (
@@ -90,9 +158,15 @@ const Profile: React.FC = () => {
                 >
                     <AvataInput>
                         <img src={user.avatar_url} alt={user.name} />
-                        <button type="button">
+                        <label htmlFor="avatar">
                             <FiCamera />
-                        </button>
+
+                            <input
+                                type="file"
+                                id="avatar"
+                                onChange={handleAvatarChange}
+                            />
+                        </label>
                     </AvataInput>
 
                     <h1>Meu perfil</h1>
